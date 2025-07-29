@@ -35,24 +35,19 @@ module "blog_vpc" {
   }
 }
 
+resource "aws_instance" "blog" {
+  ami                    = data.aws_ami.app_ami.id
+  instance_type          = var.instance_type
+  vpc_security_group_ids = [module.blog_sg.security_group_id]
 
-module "autoscaling" {
-  source  = "terraform-aws-modules/autoscaling/aws"
-  version = "6.5.2"
-  
-  name = "blog"
-  min_size = 2
-  max_size = 3
+  subnet_id = module.blog_vpc.public_subnets[0]
 
-  vpc_zone_identifier = module.blog_vpc.public_subnets
-  target_group_arns   = module.blog_alb.target_group_arns
-  security_groups     = [module.blog_sg.security_group_id]
-  image_id            = data.aws_ami.app_ami.id
-  instance_type       = var.instance_type
+  tags = {
+    Name = "Learning Terraform"
+  }
 }
 
-
-module "blog_alb" {
+module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "~> 6.0"
 
