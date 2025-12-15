@@ -1,3 +1,19 @@
+# Data source to fetch the latest Amazon Linux 2 AMI for the selected region
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 # Security group that controls network access to the EC2 instance
 resource "aws_security_group" "web_sg" {
     name        = "${var.server_name}-security-group"
@@ -47,7 +63,7 @@ resource "aws_key_pair" "web_key" {
 
 # EC2 instance (virtual server) configuration
 resource "aws_instance" "web" {
-    ami           = var.ami                            # Amazon Machine Image (OS template)
+    ami           = data.aws_ami.amazon_linux.id       # Dynamically fetched Amazon Linux 2 AMI
     instance_type = var.instance_type                  # Instance size (CPU/memory)
     key_name      = aws_key_pair.web_key.key_name      # SSH key for access
     subnet_id     = aws_subnet.web_subnet.id           # Which subnet to place the instance in

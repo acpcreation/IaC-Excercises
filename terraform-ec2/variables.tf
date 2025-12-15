@@ -17,12 +17,8 @@ variable "region_selection" {
   default     = "us-east-1"
 }
 
-# Amazon Machine Image (AMI) - the operating system template
-# This AMI is for Amazon Linux 2 in us-east-1 region
-variable "ami" {
-  description = "EC2 AMI ID"
-  default     = "ami-01b799c439fd5516a"
-}
+# Amazon Machine Image (AMI) will be dynamically fetched based on region
+# Using data source to get the latest Amazon Linux 2 AMI for the selected region
 
 # Path to the SSH public key file on your local machine
 # This key will be used for secure access to the EC2 instance
