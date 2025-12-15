@@ -1,7 +1,12 @@
 # Variables specific to the main_ec2 group
 ec2_public_ip: "44.213.119.13"
 ec2_user: "ec2-user" 
-ssh_private_key_path: "~/.ssh/id_rsa"
+# ssh_private_key_path: "~/.ssh/id_rsa"  # Original file path approach
+ssh_private_key_content: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  # PASTE YOUR ACTUAL PRIVATE KEY CONTENT HERE
+  # Make sure to include the full key including headers and footers
+  -----END OPENSSH PRIVATE KEY-----
 
 # These variables can be used in playbooks
 server_name: "web-server"
@@ -10,4 +15,4 @@ deployment_env: "development"
 # Application configuration
 app_name: "SinkingCloudsCreative"
 app_port: 8080
-git_repo: "https://YOUR_PAT_HERE@github.com/acpcreation/SinkingCloudsCreative.git"
+git_repo: "https://github.com/acpcreation/SinkingCloudsCreative.git"
