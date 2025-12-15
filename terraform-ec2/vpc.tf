@@ -12,9 +12,9 @@ resource "aws_vpc" "vpc_cidr"{
 # Public subnet where the EC2 instance will be placed
 resource "aws_subnet" "web_subnet" {
     vpc_id                  = aws_vpc.vpc_cidr.id
-    cidr_block              = "10.0.1.0/24"      # Subnet IP range (256 IP addresses)
-    availability_zone       = "us-east-1a"       # Physical location within the region
-    map_public_ip_on_launch = true              # Automatically assign public IP to instances
+    cidr_block              = "10.0.1.0/24"                 # Subnet IP range (256 IP addresses)
+    availability_zone       = "${var.region_selection}a"    # Physical location within the region
+    map_public_ip_on_launch = true                          # Automatically assign public IP to instances
 
     tags = {
         Name = "web-subnet"

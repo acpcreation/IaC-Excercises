@@ -47,8 +47,8 @@ resource "aws_key_pair" "web_key" {
 
 # EC2 instance (virtual server) configuration
 resource "aws_instance" "web" {
-    ami           = var.ami                              # Amazon Machine Image (OS template)
-    instance_type = var.instance_type                    # Instance size (CPU/memory)
+    ami           = var.ami                            # Amazon Machine Image (OS template)
+    instance_type = var.instance_type                  # Instance size (CPU/memory)
     key_name      = aws_key_pair.web_key.key_name      # SSH key for access
     subnet_id     = aws_subnet.web_subnet.id           # Which subnet to place the instance in
     vpc_security_group_ids = [aws_security_group.web_sg.id]  # Security rules
