@@ -1,0 +1,59 @@
+# Security group that controls network access to the EC2 instance
+resource "aws_security_group" "web_sg" {
+    name        = "${var.server_name}-security-group"
+    description = "Security group for ${var.server_name}"
+    vpc_id      = aws_vpc.vpc_cidr.id
+
+    # Allow inbound SSH traffic on port 22 from any IP address
+    ingress {
+        description = "SSH"
+        from_port   = 22
+        to_port     = 22
+        protocol    = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    # Allow inbound HTTP traffic on port 80 from any IP address
+    ingress {
+        description = "HTTP"
+        from_port   = 80
+        to_port     = 80
+        protocol    = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    # Allow all outbound traffic
+    egress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    tags = {
+        Name = "${var.server_name}-security-group"
+    }
+}
+
+# SSH key pair for secure access to the EC2 instance
+resource "aws_key_pair" "web_key" {
+    key_name   = "${var.server_name}-key"
+    public_key = file(var.public_key_path)  # Reads the public key from local file
+
+    tags = {
+        Name = "${var.server_name}-keypair"
+    }
+}
+
+# EC2 instance (virtual server) configuration
+resource "aws_instance" "web" {
+    ami           = var.ami                              # Amazon Machine Image (OS template)
+    instance_type = var.instance_type                    # Instance size (CPU/memory)
+    key_name      = aws_key_pair.web_key.key_name      # SSH key for access
+    subnet_id     = aws_subnet.web_subnet.id           # Which subnet to place the instance in
+    vpc_security_group_ids = [aws_security_group.web_sg.id]  # Security rules
+
+    tags = {
+        Name = var.server_name
+    }
+}
