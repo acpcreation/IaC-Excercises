@@ -1,0 +1,117 @@
+---
+- name: Install web stack and deploy Vue.js application
+  hosts: main_ec2
+  become: yes
+  vars:
+    node_version: "18"  # Node.js LTS version
+    app_dir: "/home/ec2-user/{{ app_name }}"
+    
+  tasks:
+    # Web Stack Installation Tasks
+    - name: Update system packages
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+        
+    - name: Install nginx
+      dnf:
+        name: nginx
+        state: present
+        
+    - name: Start and enable nginx service
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+        
+    - name: Install Node.js repository
+      shell: |
+        curl -fsSL https://rpm.nodesource.com/setup_{{ node_version }}.x | bash -
+      args:
+        creates: /etc/yum.repos.d/nodesource-el.repo
+        
+    - name: Install Node.js
+      dnf:
+        name: nodejs
+        state: present
+        
+
+      
+    - name: Create application directory
+      file:
+        path: /home/ec2-user/app
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+        mode: '0755'
+        
+    - name: Install Git (for cloning repositories)
+      dnf:
+        name: git
+        state: present
+        
+    - name: Create web directory
+      file:
+        path: /var/www/html
+        state: directory
+        owner: nginx
+        group: nginx
+        mode: '0755'
+        
+    - name: Configure nginx default site
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        backup: yes
+      notify: restart nginx
+      
+    # Application Deployment Tasks
+    - name: Clone or update application from Git
+      git:
+        repo: "{{ git_repo }}"
+        dest: "{{ app_dir }}"
+        version: master  # or main, depending on your default branch
+      become: no
+      when: git_repo != ""
+      
+    - name: Install application dependencies
+      npm:
+        path: "{{ app_dir }}"
+        state: present
+      become: no
+      when: git_repo != ""
+      
+    - name: Build Vue.js application
+      shell: |
+        cd {{ app_dir }}
+        npm run build
+      become: no
+      when: git_repo != ""
+      
+    - name: Copy built files to nginx web directory
+      shell: |
+        rm -rf /var/www/html/*
+        cp -r {{ app_dir }}/dist/* /var/www/html/
+      when: git_repo != ""
+      
+    - name: Restart nginx to serve new content
+      systemd:
+        name: nginx
+        state: restarted
+        
+    - name: Display deployment status
+      debug:
+        msg: |
+          Complete deployment finished successfully!
+          - Nginx: Installed and running
+          - Node.js: Version {{ node_version }} installed (for build process)
+          - Vue.js app built and deployed to: /var/www/html/
+          - Application accessible at: http://{{ ansible_default_ipv4.address }}
+          - Services are enabled to start on boot
+          
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted

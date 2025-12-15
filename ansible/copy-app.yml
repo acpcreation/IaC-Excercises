@@ -1,0 +1,47 @@
+---
+- name: Copy local Node.js app to EC2
+  hosts: main_ec2
+  become: no
+  vars:
+    app_name: "my-node-app"
+    app_port: 3000
+    local_app_path: "~/path/to/your/local/app"  # Update this path
+    app_dir: "/home/ec2-user/{{ app_name }}"
+    
+  tasks:
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+        
+    - name: Copy application files
+      synchronize:
+        src: "{{ local_app_path }}/"
+        dest: "{{ app_dir }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.git"
+          
+    - name: Install application dependencies
+      npm:
+        path: "{{ app_dir }}"
+        state: present
+        
+    - name: Create ecosystem.config.js for PM2
+      template:
+        src: ecosystem.config.js.j2
+        dest: "{{ app_dir }}/ecosystem.config.js"
+        
+    - name: Stop existing PM2 processes
+      shell: pm2 delete {{ app_name }}
+      ignore_errors: yes
+      
+    - name: Start application with PM2
+      shell: |
+        cd {{ app_dir }}
+        pm2 start ecosystem.config.js
+        
+    - name: Save PM2 configuration
+      shell: pm2 save

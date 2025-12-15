@@ -1,0 +1,18 @@
+module.exports = {
+  apps: [{
+    name: '{{ app_name }}',
+    script: './app.js',  // or './index.js' - adjust based on your main file
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production',
+      PORT: {{ app_port }}
+    },
+    env_development: {
+      NODE_ENV: 'development',
+      PORT: {{ app_port }}
+    }
+  }]
+};
