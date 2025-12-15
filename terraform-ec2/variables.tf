@@ -1,8 +1,20 @@
+# Name for the web server and related resources
+# This will be used as a prefix for resource names and tags
+variable "server_name" {
+  description = "Name for the web server instance"
+  default     = "ap-sg-server"
+}
+
 # EC2 instance size configuration (CPU, memory, network performance)
 # t2.micro is eligible for AWS free tier
 variable "instance_type" {
   description = "EC2 instance type"
   default     = "t2.micro"
+}
+
+variable "region_selection" {
+  description = "Region to deploy to"
+  default     = "us-east-1"
 }
 
 # Amazon Machine Image (AMI) - the operating system template
@@ -19,9 +31,3 @@ variable "public_key_path" {
   default     = "~/.ssh/id_rsa.pub"
 }
 
-# Name for the web server and related resources
-# This will be used as a prefix for resource names and tags
-variable "server_name" {
-  description = "Name for the web server instance"
-  default     = "ap-sg-server"
-}
