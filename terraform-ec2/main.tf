@@ -38,7 +38,7 @@ resource "aws_security_group" "web_sg" {
 # SSH key pair for secure access to the EC2 instance
 resource "aws_key_pair" "web_key" {
     key_name   = "${var.server_name}-key"
-    public_key = file(var.public_key_path)  # Reads the public key from local file
+    public_key = var.public_rsa_key # Reads the public key from local file
 
     tags = {
         Name = "${var.server_name}-keypair"
