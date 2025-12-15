@@ -26,8 +26,8 @@ variable "ami" {
 
 # Path to the SSH public key file on your local machine
 # This key will be used for secure access to the EC2 instance
-variable "public_key_path" {
+variable "public_rsa_key" {
   description = "Path to the public key file"
-  default     = "~/.ssh/id_rsa.pub"
+  # default     = "~/.ssh/id_rsa.pub"
 }
 
