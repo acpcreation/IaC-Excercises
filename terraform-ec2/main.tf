@@ -1,11 +1,11 @@
-# Data source to fetch the latest Amazon Linux 2 AMI for the selected region
+# Data source to fetch the latest Amazon Linux 2023 AMI for the selected region
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
   }
 
   filter {
@@ -51,14 +51,15 @@ resource "aws_security_group" "web_sg" {
     }
 }
 
+
 # SSH key pair for secure access to the EC2 instance
 resource "aws_key_pair" "web_key" {
-    key_name   = "${var.server_name}-key"
+    # key_name   = "${var.server_name}-key-RANDOM"
     public_key = var.public_rsa_key # Reads the public key from local file
 
-    tags = {
-        Name = "${var.server_name}-keypair"
-    }
+    # tags = {
+    #     Name = "${var.server_name}-keypair"
+    # }
 }
 
 # EC2 instance (virtual server) configuration
