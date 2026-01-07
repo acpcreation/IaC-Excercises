@@ -1,0 +1,25 @@
+# NGINX Ingress Controller Deployment Script
+# This script installs the NGINX Ingress Controller using Helm
+
+#!/bin/bash
+
+# Add NGINX Helm repository
+echo "Adding NGINX Helm repository..."
+helm repo add nginx-stable https://helm.nginx.com/stable
+helm repo update
+
+# Install NGINX Ingress Controller
+echo "Installing NGINX Ingress Controller..."
+helm upgrade --install nginx-ingress . \
+  --namespace nginx-ingress \
+  --create-namespace \
+  --wait
+
+echo "NGINX Ingress Controller deployed successfully!"
+echo ""
+echo "To check the status:"
+echo "kubectl get pods -n nginx-ingress"
+echo "kubectl get svc -n nginx-ingress"
+echo ""
+echo "To get the LoadBalancer external IP:"
+echo "kubectl get svc nginx-ingress-controller -n nginx-ingress"

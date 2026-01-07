@@ -1,0 +1,63 @@
+# Default values for nginx-stable.
+# This is a YAML-formatted file.
+
+nginx-ingress:
+  controller:
+    # Replica count for the NGINX Ingress Controller
+    replicaCount: 2
+    
+    # Container image settings
+    image:
+      repository: nginx/nginx-ingress
+      tag: "3.4.3"
+      pullPolicy: IfNotPresent
+    
+    # Service configuration
+    service:
+      type: LoadBalancer
+      httpPort:
+        enable: true
+        port: 80
+        targetPort: 80
+      httpsPort:
+        enable: true
+        port: 443
+        targetPort: 443
+    
+    # Ingress Class
+    ingressClass:
+      name: nginx
+      create: true
+      setAsDefaultIngress: false
+    
+    # Enable metrics collection
+    enableSnippets: false
+    
+    # Resource limits and requests
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+    
+    # Node selector for deployment
+    nodeSelector: {}
+    
+    # Tolerations
+    tolerations: []
+    
+    # Affinity rules
+    affinity: {}
+    
+    # Additional annotations for the service
+    serviceAnnotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    
+    # Enable Prometheus metrics
+    enablePrometheusMetrics: true
+    
+    # Configure logging
+    logLevel: 1

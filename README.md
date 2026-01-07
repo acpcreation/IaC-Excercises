@@ -16,6 +16,30 @@ To Start Run:
 - Use the both private rsa and .pub rsa key to vault
 - 
 
+## Kubernetes / Helm / Minikube
+Deploying Containers
+- Create deployment.yaml (this is all hard coded values)
+- kubectl apply -f deployment.yaml 
+
+- Helm allows us to variablize the deployment.yaml values
+- helm upgrade --install [NAME] [CHART]
+- NEED: 
+    - [Example](https://helm.nginx.com/)
+    - Control plane created with CLI (for aws eks or kubectl), or with TF (which is used in the platform)
+
+Kubectl
+    > Helm
+        > Operators like ArgoCD (can be deployed on the cluster)
+        > Actual containers
+
+Steps:
+1. terraform/ terraform init/apply
+2. aws eks --region us-east-1 update-kubeconfig --name plattel-eks-cluster
+3. kubectl commands:
+    kubectl cluster-info
+    kubectl get nodes
+4. ./helm/deployment.yaml
+
 
 ## .course
 Original LinkedIn Learning course

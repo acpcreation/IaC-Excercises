@@ -1,0 +1,81 @@
+---
+- name: Install web stack and deploy Vue.js application
+  hosts: main_ec2
+  become: yes
+  gather_facts: no
+  vars:
+    node_version: "18"  # Node.js LTS version
+    
+  tasks:
+    # Web Stack Installation Tasks
+    - name: Update system packages
+      raw: yum update -y
+        
+    - name: Wait for yum lock to clear
+      raw: while pgrep yum > /dev/null; do sleep 5; done
+        
+    - name: Install nginx
+      raw: amazon-linux-extras install -y nginx1
+        
+    - name: Start and enable nginx service
+      raw: systemctl enable nginx && systemctl start nginx
+        
+    - name: Clean up any previous NodeSource repositories  
+      raw: rm -f /etc/yum.repos.d/nodesource*.repo && yum clean all
+      
+    - name: Install Node.js 18 directly
+      raw: |
+        # Add NodeSource repository for Node.js 18
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+        # Install Node.js 18
+        sudo yum install -y nodejs
+        # Verify installation
+        node --version
+        npm --version
+      
+    - name: Install Git (if not present)
+      raw: yum install -y git
+      
+    - name: Create application directory
+      raw: mkdir -p /home/ec2-user/app && chown ec2-user:ec2-user /home/ec2-user/app
+        
+    - name: Clone Vue.js repository
+      raw: |
+        cd /home/ec2-user/app
+        if [ -d ".git" ]; then
+          git pull origin main || git pull origin master
+        else
+          git clone https://github.com/acpcreation/SinkingCloudsCreative.git .
+        fi
+        chown -R ec2-user:ec2-user /home/ec2-user/app
+        
+    - name: Install dependencies and build Vue.js app
+      raw: |
+        cd /home/ec2-user/app
+        
+        # Clean any previous install attempts
+        rm -rf node_modules package-lock.json
+        
+        # Clean npm cache
+        npm cache clean --force
+        
+        # Install dependencies with legacy peer deps for compatibility
+        npm install --legacy-peer-deps
+        
+        # Install missing eslint plugin specifically if needed
+        npm install @vue/cli-plugin-eslint --legacy-peer-deps --save-dev || echo "ESLint plugin already installed or not needed"
+        
+        # Build the application
+        npm run build
+        
+    - name: Create web directory and copy built app
+      raw: |
+        mkdir -p /var/www/html
+        cp -r /home/ec2-user/app/dist/* /var/www/html/ 2>/dev/null || cp -r /home/ec2-user/app/build/* /var/www/html/ 2>/dev/null || echo "Built files not found in dist or build directories"
+        chown -R nginx:nginx /var/www/html
+      
+    - name: Restart nginx to serve new content
+      raw: systemctl restart nginx
+        
+    - name: Check services status
+      raw: systemctl status nginx --no-pager

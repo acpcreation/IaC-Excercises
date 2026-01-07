@@ -1,10 +1,10 @@
 # Variables specific to the main_ec2 group
-# ec2_public_ip: "44.213.119.13"
-# ec2_user: "ec2-user" 
-# ssh_private_key_path: "~/.ssh/id_rsa"  # Original file path approach
+ec2_public_ip: "3.237.76.239"
+ec2_user: "ec2-user" 
+ssh_private_key_path: "~/.ssh/id_rsa"  # Correct SSH key file that exists
 
-ec2_public_ip: "{{ host_ip }}"
-ec2_user: "{{ ansible_username }}" 
+# ec2_public_ip: "{{ host_ip }}"
+# ec2_user: "{{ ansible_username }}" 
 # ssh_private_key_content: ""
 
 # These variables can be used in playbooks

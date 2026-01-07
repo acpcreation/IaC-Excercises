@@ -2,7 +2,7 @@
 # This will be used as a prefix for resource names and tags
 variable "server_name" {
   description = "Name for the web server instance"
-  default     = "ap-sg-server"
+  default     = "ap-sg-server-v2"
 }
 
 # EC2 instance size configuration (CPU, memory, network performance)
@@ -24,6 +24,6 @@ variable "region_selection" {
 # This key will be used for secure access to the EC2 instance
 variable "public_rsa_key" {
   description = "Path to the public key file"
-  # default     = "~/.ssh/id_rsa.pub"
+  default     = "~/.ssh/id_rsa.pub"
 }
 
