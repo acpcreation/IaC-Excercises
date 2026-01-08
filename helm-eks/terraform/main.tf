@@ -21,7 +21,7 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 
   tags = {
-    Name = "eks-vpc"
+    Name = "sg-eks-vpc"
   }
 }
 
