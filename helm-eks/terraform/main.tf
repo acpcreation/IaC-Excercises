@@ -349,8 +349,13 @@ resource "aws_eks_cluster" "main" {
   version  = var.kubernetes_version
 
   vpc_config {
-    subnet_ids = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+    subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+    endpoint_private_access = true
+    endpoint_public_access  = true
+    public_access_cidrs     = ["0.0.0.0/0"]
   }
+
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_policy,
@@ -358,6 +363,13 @@ resource "aws_eks_cluster" "main" {
 
   tags = {
     Name = var.cluster_name
+  }
+
+  # Ignore changes to the node group attachment
+  lifecycle {
+    ignore_changes = [
+      version,
+    ]
   }
 }
 
