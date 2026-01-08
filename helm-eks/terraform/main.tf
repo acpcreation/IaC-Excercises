@@ -1,5 +1,30 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+  }
+}
+
 provider "aws" {
   region  = var.region_selection
+}
+
+# Kubernetes provider
+provider "kubernetes" {
+  host                   = aws_eks_cluster.main.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.main.certificate_authority[0].data)
+  
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args = ["eks", "get-token", "--cluster-name", aws_eks_cluster.main.name]
+  }
 }
 
 # Data source to get availability zones
@@ -189,6 +214,23 @@ resource "aws_iam_role" "eks_console_access" {
         Principal = {
           AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
         }
+        Condition = {
+          StringEquals = {
+            "sts:ExternalId" = "eks-console-access"
+          }
+        }
+      },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          AWS = "*"
+        }
+        Condition = {
+          StringEquals = {
+            "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       }
     ]
   })
@@ -260,8 +302,45 @@ resource "aws_iam_role_policy_attachment" "eks_console_access" {
   role       = aws_iam_role.eks_console_access.name
 }
 
+# IAM Group for EKS Users
+resource "aws_iam_group" "eks_users" {
+  name = "eks-users"
+}
+
+# Policy to allow assuming the EKS console access role
+resource "aws_iam_policy" "assume_eks_console_role" {
+  name        = "AssumeEKSConsoleRole"
+  description = "Policy to allow assuming EKS console access role"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "sts:AssumeRole"
+        Resource = aws_iam_role.eks_console_access.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_group_policy_attachment" "eks_users_assume_role" {
+  group      = aws_iam_group.eks_users.name
+  policy_arn = aws_iam_policy.assume_eks_console_role.arn
+}
+
+resource "aws_iam_group_policy_attachment" "eks_users_console_access" {
+  group      = aws_iam_group.eks_users.name
+  policy_arn = aws_iam_policy.eks_console_access.arn
+}
+
 # Data source to get current AWS account ID
 data "aws_caller_identity" "current" {}
+
+# Data source to get current IAM identity (works for both users and roles)
+locals {
+  current_identity_arn = data.aws_caller_identity.current.arn
+}
 
 # EKS Cluster
 resource "aws_eks_cluster" "main" {
@@ -308,6 +387,50 @@ resource "aws_eks_node_group" "main" {
   }
 }
 
+# aws-auth ConfigMap for EKS cluster access
+resource "kubernetes_config_map" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = yamlencode([
+      {
+        rolearn  = aws_iam_role.eks_node_group.arn
+        username = "system:node:{{EC2PrivateDNSName}}"
+        groups = [
+          "system:bootstrappers",
+          "system:nodes"
+        ]
+      },
+      {
+        rolearn  = aws_iam_role.eks_console_access.arn
+        username = "eks-console-user"
+        groups = [
+          "system:masters"
+        ]
+      }
+    ])
+    
+    mapUsers = yamlencode([
+      {
+        userarn  = local.current_identity_arn
+        username = "admin"
+        groups = [
+          "system:masters"
+        ]
+      }
+    ])
+    
+    mapAccounts = yamlencode([
+      data.aws_caller_identity.current.account_id
+    ])
+  }
+
+  depends_on = [aws_eks_cluster.main]
+}
+
 # Outputs
 output "cluster_id" {
   description = "EKS cluster ID"
@@ -347,4 +470,28 @@ output "cluster_name" {
 output "console_access_role_arn" {
   description = "ARN of the IAM role for EKS console access"
   value       = aws_iam_role.eks_console_access.arn
+}
+
+output "eks_users_group_name" {
+  description = "Name of the IAM group for EKS users"
+  value       = aws_iam_group.eks_users.name
+}
+
+output "user_setup_instructions" {
+  description = "Instructions for setting up user access"
+  value = <<EOF
+To grant EKS access to users:
+1. Add users to the IAM group: ${aws_iam_group.eks_users.name}
+2. Users can then assume the role: ${aws_iam_role.eks_console_access.arn}
+3. Or users can switch to this role in the AWS console using "Switch Role"
+
+To configure kubectl access, users should run:
+${join("\n", [
+  "aws eks --region ${var.region_selection} update-kubeconfig --name ${var.cluster_name}",
+  "# OR assume the role and then:",
+  "aws sts assume-role --role-arn ${aws_iam_role.eks_console_access.arn} --role-session-name eks-access",
+  "# Then export the credentials and run:",
+  "aws eks --region ${var.region_selection} update-kubeconfig --name ${var.cluster_name}"
+])}
+EOF
 }
