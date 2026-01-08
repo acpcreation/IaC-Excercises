@@ -176,6 +176,93 @@ resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
   role       = aws_iam_role.eks_node_group.name
 }
 
+# IAM Role for EKS Console Access
+resource "aws_iam_role" "eks_console_access" {
+  name = "eks-console-access-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+      }
+    ]
+  })
+}
+
+# Custom IAM Policy for EKS Console Access
+resource "aws_iam_policy" "eks_console_access" {
+  name        = "EKSConsoleAccess"
+  description = "Policy for viewing EKS resources in AWS console"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:DescribeNodegroup",
+          "eks:ListNodegroups",
+          "eks:DescribeFargateProfile",
+          "eks:ListFargateProfiles",
+          "eks:DescribeUpdate",
+          "eks:ListUpdates",
+          "eks:DescribeAddon",
+          "eks:ListAddons",
+          "eks:DescribeIdentityProviderConfig",
+          "eks:ListIdentityProviderConfigs",
+          "eks:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeRouteTables",
+          "ec2:DescribeInternetGateways",
+          "ec2:DescribeNatGateways"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_console_access" {
+  policy_arn = aws_iam_policy.eks_console_access.arn
+  role       = aws_iam_role.eks_console_access.name
+}
+
+# Data source to get current AWS account ID
+data "aws_caller_identity" "current" {}
+
 # EKS Cluster
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
@@ -255,4 +342,9 @@ output "region" {
 output "cluster_name" {
   description = "EKS cluster name"
   value       = var.cluster_name
+}
+
+output "console_access_role_arn" {
+  description = "ARN of the IAM role for EKS console access"
+  value       = aws_iam_role.eks_console_access.arn
 }
