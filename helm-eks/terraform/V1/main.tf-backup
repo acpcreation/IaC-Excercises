@@ -8,32 +8,33 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region_selection
+  region  = var.region_selection
 }
 
 # Data source to get availability zones
 data "aws_availability_zones" "available" {}
 
-# Simplified VPC - Public subnets only
+# VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
 
   tags = {
-    Name = "eks-vpc-simple"
+    Name = "sg-eks-vpc"
   }
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
+
   tags = {
     Name = "eks-igw"
   }
 }
 
-# Only Public Subnets (no private subnets = no NAT Gateway needed)
+# Public Subnets
 resource "aws_subnet" "public" {
   count = 2
 
@@ -43,12 +44,26 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                     = "eks-public-subnet-${count.index + 1}"
+    Name = "eks-public-subnet-${count.index + 1}"
     "kubernetes.io/role/elb" = "1"
   }
 }
 
-# Single route table for public subnets
+# Private Subnets
+resource "aws_subnet" "private" {
+  count = 2
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.${count.index + 10}.0/24"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "eks-private-subnet-${count.index + 1}"
+    "kubernetes.io/role/internal-elb" = "1"
+  }
+}
+
+# Route table for public subnets
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -62,10 +77,56 @@ resource "aws_route_table" "public" {
   }
 }
 
+# Route table associations for public subnets
 resource "aws_route_table_association" "public" {
-  count          = length(aws_subnet.public)
+  count = length(aws_subnet.public)
+
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+# NAT Gateway
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "eks-nat-eip"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "eks-nat-gateway"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+# Route table for private subnets
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+
+  tags = {
+    Name = "eks-private-rt"
+  }
+}
+
+# Route table associations for private subnets
+resource "aws_route_table_association" "private" {
+  count = length(aws_subnet.private)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }
 
 # EKS Cluster Service Role
@@ -124,21 +185,30 @@ resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
   role       = aws_iam_role.eks_node_group.name
 }
 
-# Simplified EKS Cluster - minimal logging, public-only
+# Remove complex IAM setup - using simpler approach
+
+# Data source to get current AWS account ID
+data "aws_caller_identity" "current" {}
+
+# Data source to get current IAM identity (works for both users and roles)
+locals {
+  current_identity_arn = data.aws_caller_identity.current.arn
+}
+
+# EKS Cluster
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
   version  = var.kubernetes_version
 
   vpc_config {
-    subnet_ids              = aws_subnet.public[*].id  # Only public subnets
-    endpoint_private_access = false                     # Disable private access
+    subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+    endpoint_private_access = true
     endpoint_public_access  = true
     public_access_cidrs     = ["0.0.0.0/0"]
   }
 
-  # Disable logging for faster deployment
-  # enabled_cluster_log_types = []
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_policy,
@@ -147,14 +217,21 @@ resource "aws_eks_cluster" "main" {
   tags = {
     Name = var.cluster_name
   }
+
+  # Ignore changes to the node group attachment
+  lifecycle {
+    ignore_changes = [
+      version,
+    ]
+  }
 }
 
-# Simplified EKS Node Group - runs in public subnets
+# EKS Managed Node Group
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.cluster_name}-nodes"
   node_role_arn   = aws_iam_role.eks_node_group.arn
-  subnet_ids      = aws_subnet.public[*].id  # Public subnets instead of private
+  subnet_ids      = aws_subnet.private[*].id
 
   scaling_config {
     desired_size = var.node_desired_size
@@ -176,9 +253,34 @@ resource "aws_eks_node_group" "main" {
 }
 
 # Outputs
+output "cluster_id" {
+  description = "EKS cluster ID"
+  value       = aws_eks_cluster.main.id
+}
+
+output "cluster_arn" {
+  description = "EKS cluster ARN"
+  value       = aws_eks_cluster.main.arn
+}
+
 output "cluster_endpoint" {
   description = "EKS cluster endpoint"
   value       = aws_eks_cluster.main.endpoint
+}
+
+output "cluster_security_group_id" {
+  description = "Security group ID attached to the EKS cluster"
+  value       = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+}
+
+output "kubectl_config_command" {
+  description = "kubectl config command to configure access to EKS cluster"
+  value       = "aws eks --region ${var.region_selection} update-kubeconfig --name ${var.cluster_name}"
+}
+
+output "region" {
+  description = "AWS region"
+  value       = var.region_selection
 }
 
 output "cluster_name" {
@@ -186,7 +288,16 @@ output "cluster_name" {
   value       = var.cluster_name
 }
 
-output "kubectl_config_command" {
-  description = "kubectl config command"
-  value       = "aws eks --region ${var.region_selection} update-kubeconfig --name ${var.cluster_name}"
+output "access_instructions" {
+  description = "Instructions for accessing the EKS cluster"
+  value = <<EOF
+The EKS cluster has been created successfully.
+
+To configure kubectl access, run:
+aws eks --region ${var.region_selection} update-kubeconfig --name ${var.cluster_name}
+
+Then configure access manually by creating the aws-auth ConfigMap or using EKS access entries.
+
+The cluster creator (${local.current_identity_arn}) should have automatic access.
+EOF
 }

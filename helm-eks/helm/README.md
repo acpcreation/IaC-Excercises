@@ -16,16 +16,23 @@ helm repo add nginx-stable https://helm.nginx.com/stable
 helm repo update
 ```
 
-2. Install the chart:
+2. Update kubeconfig
+```bash
+aws eks --region us-east-1 update-kubeconfig --name simple-eks-cluster
+```
+
+3. Install the chart:
 ```bash
 helm upgrade --install nginx-ingress . --namespace nginx-ingress --create-namespace
 ```
 
-3. Or use the provided deployment script:
+4. Or use the provided deployment script:
 ```bash
 chmod +x deployment.yaml
 ./deployment.yaml
 ```
+
+
 
 ## Configuration
 
