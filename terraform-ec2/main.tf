@@ -53,7 +53,9 @@ resource "aws_security_group" "web_sg" {
 
 
 # SSH key pair for secure access to the EC2 instance
+# Only created if public_rsa_key is provided
 resource "aws_key_pair" "web_key" {
+    count      = var.public_rsa_key != "" ? 1 : 0
     # key_name   = "${var.server_name}-key-RANDOM"
     public_key = file(var.public_rsa_key) # Reads the public key from local file
 
@@ -66,7 +68,7 @@ resource "aws_key_pair" "web_key" {
 resource "aws_instance" "web" {
     ami           = data.aws_ami.amazon_linux.id       # Dynamically fetched Amazon Linux 2 AMI
     instance_type = var.instance_type                  # Instance size (CPU/memory)
-    key_name      = aws_key_pair.web_key.key_name      # SSH key for access
+    key_name      = var.public_rsa_key != "" ? aws_key_pair.web_key[0].key_name : null  # SSH key (optional)
     subnet_id     = aws_subnet.web_subnet.id           # Which subnet to place the instance in
     vpc_security_group_ids = [aws_security_group.web_sg.id]  # Security rules
 

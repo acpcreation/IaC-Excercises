@@ -22,8 +22,10 @@ variable "region_selection" {
 
 # Path to the SSH public key file on your local machine
 # This key will be used for secure access to the EC2 instance
+# Leave empty to skip SSH key configuration
 variable "public_rsa_key" {
-  description = "Path to the public key file"
-  default     = "/Users/acpcreation/.ssh/id_rsa.pub"
+  description = "Path to the public key file (optional) ex. /Users/acpcreation/.ssh/id_rsa.pub"
+  default     = ""
+  type        = string
 }
 
