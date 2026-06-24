@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "bastion_security_group_id" {
   description = "ID of the existing bastion security group to manage SSH rules for"
   type        = string
-  default     = "sg-0dadb1f321182cf6f"
+  default     = "sg-0fb441a982c085d4a"
 }
 
 variable "ssh_cidr_blocks" {

@@ -1,0 +1,6 @@
+---
+# Common Hiera data
+
+# Node.js configuration
+nodejs_install::nodejs_version: '20.x'
+nodejs_install::npm_version: 'latest'

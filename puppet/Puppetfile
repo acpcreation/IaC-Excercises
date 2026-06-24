@@ -1,0 +1,4 @@
+forge "https://forgeapi.puppet.com"
+
+mod 'puppetlabs-stdlib', '~> 8.0'
+mod 'puppetlabs-nodejs', '~> 9.0'
