@@ -1,0 +1,24 @@
+# Example Terraform Variables File
+# Copy this to terraform.tfvars and customize for your needs
+
+# AWS region
+region_selection = "us-east-1"
+
+# VPC CIDR block
+vpc_cidr = "10.0.0.0/16"
+
+# Public subnet CIDR blocks
+public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
+
+# Private subnet CIDR blocks
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.11.0/24"]
+
+# VPC name
+vpc_name = "simple-vpc"
+
+# Enable NAT Gateway for private subnet internet access (charges apply)
+enable_nat_gateway = false
+
+# DNS configuration
+enable_dns_hostnames = true
+enable_dns_support   = true
