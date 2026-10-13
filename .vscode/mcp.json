@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "stackguardian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://api.app.stackguardian.io/mcp?SG_API_TOKEN=sgu_rcXTM7j9zEbMtiLCNqgjD&SG_ORG=wicked-hop"
+      ]
+    }
+  }
+}

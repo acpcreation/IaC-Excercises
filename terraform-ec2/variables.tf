@@ -17,15 +17,4 @@ variable "region_selection" {
   default     = "us-east-1"
 }
 
-# Amazon Machine Image (AMI) will be dynamically fetched based on region
-# Using data source to get the latest Amazon Linux 2 AMI for the selected region
-
-# Path to the SSH public key file on your local machine
-# This key will be used for secure access to the EC2 instance
-# Leave empty to skip SSH key configuration
-variable "public_rsa_key" {
-  description = "Path to the public key file (optional) ex. /Users/acpcreation/.ssh/id_rsa.pub"
-  default     = ""
-  type        = string
-}
 
